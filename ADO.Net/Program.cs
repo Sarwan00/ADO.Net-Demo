@@ -14,7 +14,7 @@ namespace ADO.Net
             string connectionString = "Server=DESKTOP-AVINVCV\\SQLEXPRESS;Database=tbl_employee;User Id=sa;Password=Sarwan@12;";
 
             // Inserting a new employee
-            InsertEmployee(connectionString, 6,"Sarwan", "Yadav", "Dev", new DateTime(2020, 01, 15), 50000.00m);
+            InsertEmployee(connectionString, 7,"Sarwan", "Yadav", "Dev", new DateTime(2020, 01, 15), 50000.00m);
 
             // Displaying all employees after insertion
             DisplayEmployees(connectionString);
