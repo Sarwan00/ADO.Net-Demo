@@ -1,162 +1,112 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Data.SqlClient;
 using System.Data;
-namespace ADO.Net
+using System.Data.SqlClient;
+using System.Configuration;
+
+namespace AdoNetExample
 {
     public class Program
     {
-        static void Main()
+        static void Main(string[] args)
         {
-            string connectionString = "Server=DESKTOP-AVINVCV\\SQLEXPRESS;Database=tbl_employee;User Id=sa;Password=Sarwan@12;";
-
-            // Inserting a new employee
-            InsertEmployee(connectionString, 7,"Sarwan", "Yadav", "Dev", new DateTime(2020, 01, 15), 50000.00m);
-
-            // Displaying all employees after insertion
-            DisplayEmployees(connectionString);
-
-            Console.ReadLine(); // Keep console window open
-        }
-
-        static void InsertEmployee(string connectionString,int employeeID, string firstName, string lastName, string department, DateTime joinDate, decimal salary)
-        {
-            string sqlInsert = "INSERT INTO Employee (EmployeeID,FirstName, LastName, Department, JoinDate, Salary) " +
-                               "VALUES (@employeeID,@firstName, @lastName, @department, @joinDate, @salary)";
-
-            using (SqlConnection connection = new SqlConnection(connectionString))
+            try
             {
-                SqlCommand command = new SqlCommand(sqlInsert, connection);
+                string connectionString = ConfigurationManager.ConnectionStrings["MyConnectionString"].ConnectionString;
 
-                // Add parameters to the command
-                command.Parameters.AddWithValue("@EmployeeID", employeeID);
-                command.Parameters.AddWithValue("@FirstName", firstName);
-                command.Parameters.AddWithValue("@LastName", lastName);
-                command.Parameters.AddWithValue("@Department", department);
-                command.Parameters.AddWithValue("@JoinDate", joinDate);
-                command.Parameters.AddWithValue("@Salary", salary);
-
-                try
+                // Create a connection
+                using (SqlConnection connection = new SqlConnection(connectionString))
                 {
                     connection.Open();
-                    int rowsAffected = command.ExecuteNonQuery();
-                    Console.WriteLine($"Rows Inserted: {rowsAffected}");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error: {ex.Message}");
+                    Console.WriteLine("Checking if table already exists ");
+                    DropTable(connection);
+                    // Create a table
+                    CreateTable(connection);
+
+                    // Insert records
+                    InsertRecords(connection);
+
+                    // Perform select queries
+                    PerformSelectQueries(connection);
                 }
             }
+            catch(Exception ex) 
+            {
+                Console.WriteLine(ex.Message);
+            }
+
+            Console.WriteLine("Press any key to exit...");
+            Console.ReadKey();
+        }
+       public  static void DropTable(SqlConnection connection)
+        {
+            string DropTable = @"DROP Table Department_tbl";
+            SqlCommand command = new SqlCommand(DropTable, connection);
+            int RowAffected = command.ExecuteNonQuery();
+            if (RowAffected > 0)
+
+            Console.WriteLine("Table Dropped successfully." + "," + "RowAffected:" + RowAffected);
+            Console.WriteLine("Table not Exists");
+
+
+
         }
 
-        static void DisplayEmployees(string connectionString)
+        public static void CreateTable(SqlConnection connection)
         {
-            string sqlQuery = "SELECT * FROM Employee";
+            string createTableQuery = @"
+                CREATE TABLE Department_tbl (
+                    Id INT PRIMARY KEY,
+                    Name NVARCHAR(100),
+                    Department NVARCHAR(100)
+                )";
 
-            using (SqlConnection connection = new SqlConnection(connectionString))
+            SqlCommand command = new SqlCommand(createTableQuery, connection);
+            int RowAffected =command.ExecuteNonQuery();
+
+            Console.WriteLine("Table 'Employees' created successfully."+ ","+ "RowAffected:"+ RowAffected);
+        }
+
+        public static void InsertRecords(SqlConnection connection)
+        {
+            string insertQuery = @"
+                INSERT INTO Department_tbl (Id, Name, Department)
+                VALUES 
+                    (1, 'John Doe', 'HR'),
+                    (2, 'Jane Smith', 'IT'),
+                    (3, 'Mike Johnson', 'Finance')";
+
+            SqlCommand command = new SqlCommand(insertQuery, connection);
+            int rowsAffected = command.ExecuteNonQuery();
+
+            Console.WriteLine($"{rowsAffected} row(s) inserted into 'Employees' table.");
+        }
+
+           public  static void PerformSelectQueries(SqlConnection connection)
+        {
+            string selectQuery = @"SELECT Id, Name, Department FROM Department_tbl";
+            try
             {
-                SqlCommand command = new SqlCommand(sqlQuery, connection);
-
-                try
+                using (SqlCommand command = new SqlCommand(selectQuery, connection))
                 {
-                    connection.Open();
-                    SqlDataReader reader = command.ExecuteReader();
 
-                    while (reader.Read())
+                    using (SqlDataReader sdr = command.ExecuteReader())
                     {
-                        // Assuming your table has columns in this order: EmployeeID, FirstName, LastName, Department, HireDate, Salary
-                        int employeeId = reader.GetInt32(0); // Assuming EmployeeID is the first column and of type int
-                        string firstName = reader.GetString(1); // Assuming FirstName is the second column and of type string
-                        string lastName = reader.GetString(2); // Assuming LastName is the third column and of type string
-                        string department = reader.GetString(3); // Assuming Department is the fourth column and of type string
-                        DateTime joinDate = reader.GetDateTime(4); // Assuming HireDate is the fifth column and of type DateTime
-                        decimal salary = reader.GetDecimal(5); // Assuming Salary is the sixth column and of type decimal
+                        Console.WriteLine("Records in 'Department' table:");
+                        Console.WriteLine("--------------------------------------");
+                        while (sdr.Read())
+                        {
+                            Console.WriteLine(sdr[0] + ",  " + sdr[1] + ",  " + sdr[2]);
+                        }
 
-                        // Format the output as required
-                        Console.WriteLine($"{employeeId}\t{firstName}\t{lastName}\t{department}\t{joinDate.ToShortDateString()}\t{salary.ToString("N2")}");
                     }
 
-                    reader.Close();
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error: {ex.Message}");
                 }
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
         }
+
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    //    static void Main(string[] args)
-    //    {
-    //        string connectionString = "Server=DESKTOP-AVINVCV\\SQLEXPRESS;Database=tbl_employee;User Id=sa;Password=Sarwan@12;";
-
-    //        using (SqlConnection connection = new SqlConnection(connectionString))
-    //        {
-    //            string sqlQuery = "SELECT * FROM Employee"; // Replace TableName with your actual table name
-
-    //            SqlCommand command = new SqlCommand(sqlQuery, connection);
-
-    //            try
-    //            {
-    //                connection.Open();
-
-    //                SqlDataReader reader = command.ExecuteReader();
-
-    //                while (reader.Read())
-    //                {
-    //                    // Assuming your table has columns in this order: EmployeeID, FirstName, LastName, Department, HireDate, Salary
-    //                    int employeeId = reader.GetInt32(0); // Assuming EmployeeID is the first column and of type int
-    //                    string firstName = reader.GetString(1); // Assuming FirstName is the second column and of type string
-    //                    string lastName = reader.GetString(2); // Assuming LastName is the third column and of type string
-    //                    string department = reader.GetString(3); // Assuming Department is the fourth column and of type string
-    //                    DateTime hireDate = reader.GetDateTime(4); // Assuming HireDate is the fifth column and of type DateTime
-    //                    decimal salary = reader.GetDecimal(5); // Assuming Salary is the sixth column and of type decimal
-
-    //                    // Format the output as required
-    //                    Console.WriteLine($"{employeeId}\t{firstName}\t{lastName}\t{department}\t{hireDate.ToShortDateString()}\t{salary.ToString("N2")}");
-
-    //                }
-
-    //                reader.Close();
-    //            }
-    //            catch (Exception ex)
-    //            {
-    //                Console.WriteLine(ex.Message);
-    //            }
-    //            finally
-    //            {
-    //                connection.Close();
-    //            }
-    //        }
-
-    //        Console.ReadLine();
-
-
-
-
-    //}
 }
-
