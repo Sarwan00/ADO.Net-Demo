@@ -1,51 +1,57 @@
 ﻿using System;
 using System.Data.SqlClient;
-namespace AdoNetConsoleApplication
+using NUnit.Framework;
+using Moq;
+
+namespace AdoNetExample.Tests
 {
-    class Program
+    [TestClass]
+    public class ProgramTests
     {
-        static void Main(string[] args)
+        [TestMethod]
+        public void TestAdoNetOperations()
         {
-            try
+            // Mock SqlConnection
+            var mockConnection = new Mock<SqlConnection>("");
+
+            // Mock SqlCommand for CreateTable
+            var mockCreateCommand = new Mock<SqlCommand>();
+            mockCreateCommand.Setup(cmd => cmd.ExecuteNonQuery()).Verifiable();
+            mockConnection.Setup(conn => conn.CreateCommand()).Returns(mockCreateCommand.Object);
+
+            // Mock SqlCommand for InsertRecords
+            var mockInsertCommand = new Mock<SqlCommand>();
+            mockInsertCommand.Setup(cmd => cmd.ExecuteNonQuery()).Returns(3); // 3 rows affected
+            mockConnection.Setup(conn => conn.CreateCommand()).Returns(mockInsertCommand.Object);
+
+            // Mock SqlCommand for PerformSelectQueries
+            var mockSelectCommand = new Mock<SqlCommand>();
+            var mockReader = new Mock<SqlDataReader>();
+            mockReader.SetupSequence(r => r.Read())
+                .Returns(true).Returns(true).Returns(true) // Simulate 3 rows
+                .Returns(false); // End of data
+            mockReader.Setup(r => r["Id"]).Returns(1).Returns(2).Returns(3); // Simulate Id values
+            mockReader.Setup(r => r["Name"]).Returns("John Doe").Returns("Jane Smith").Returns("Mike Johnson"); // Simulate Name values
+            mockReader.Setup(r => r["Department"]).Returns("HR").Returns("IT").Returns("Finance"); // Simulate Department values
+            mockSelectCommand.Setup(cmd => cmd.ExecuteReader()).Returns(mockReader.Object);
+            mockConnection.Setup(conn => conn.CreateCommand()).Returns(mockSelectCommand.Object);
+
+            // Test the program flow
+            using (var program = new Program())
             {
-                string ConString = @"data source=LAPTOP-ICA2LCQL\SQLEXPRESS; database=ShoppingCartDB; integrated security=SSPI";
-                using (SqlConnection connection = new SqlConnection(ConString))
-                {
-                    // Creating the command object
-                    SqlCommand cmd = new SqlCommand("SELECT * FROM Customers; SELECT * FROM Orders", connection);
+                // Set the connection string in the program (not ideal, but for simplicity here)
+                typeof(Program).GetField("connectionString", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic).SetValue(null, "");
 
-                    // Opening Connection  
-                    connection.Open();
-
-                    // Executing the SQL query  
-                    SqlDataReader reader = cmd.ExecuteReader();
-
-                    //Looping through First Result Set
-                    Console.WriteLine("First Result Set:");
-                    while (reader.Read())
-                    {
-                        Console.WriteLine(reader[0] + ",  " + reader[1] + ",  " + reader[2]);
-                    }
-
-                    //To retrieve the second result set from SqlDataReader object, use the NextResult(). 
-                    //The NextResult() method returns true and advances to the next result-set.
-                    while (reader.NextResult())
-                    {
-                        Console.WriteLine("\nSecond Result Set:");
-                        //Looping through each record
-                        while (reader.Read())
-                        {
-                            Console.WriteLine(reader[0] + ",  " + reader[1] + ",  " + reader[2]);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Exception Occurred: {ex.Message}");
+                // Execute methods
+                program.CreateTable(mockConnection.Object);
+                program.InsertRecords(mockConnection.Object);
+                program.PerformSelectQueries(mockConnection.Object);
             }
 
-            Console.ReadKey();
+            // Verify expectations
+            mockCreateCommand.Verify(cmd => cmd.ExecuteNonQuery(), Times.Once);
+            mockInsertCommand.Verify(cmd => cmd.ExecuteNonQuery(), Times.Once);
+            mockSelectCommand.Verify(cmd => cmd.ExecuteReader(), Times.Once);
         }
     }
 }
