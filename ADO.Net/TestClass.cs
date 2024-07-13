@@ -4,6 +4,7 @@ using System.Configuration;
 using System.Data.SqlClient;
 using System.Transactions;
 using System.IO;
+using Moq;
 
 namespace AdoNetExample.Tests
 {
@@ -34,13 +35,19 @@ namespace AdoNetExample.Tests
         {
             try
             {
-                Program.CreateTable(_connection);
-
-                // Assert that the table exists
-                using (var cmd = new SqlCommand("SELECT COUNT(*) FROM Department_tbl", _connection))
+                string connectionString = ConfigurationManager.ConnectionStrings["MyConnectionString"].ConnectionString;
+                using (SqlConnection connection = new SqlConnection(connectionString))
                 {
-                    int count = (int)cmd.ExecuteScalar();
-                    Assert.AreEqual(0, count);  // Expected count based on CreateTable method
+                    connection.Open();
+                    Program.DropTable(connection);
+                    Program.CreateTable(connection);
+
+                    // Assert that the table exists
+                    using (var cmd = new SqlCommand("SELECT COUNT(*) FROM Department_tbl", connection))
+                    {
+                        int count = (int)cmd.ExecuteScalar();
+                        Assert.AreEqual(0, count);  // Expected count based on CreateTable method
+                    }
                 }
             }
             catch (Exception ex)
@@ -54,15 +61,21 @@ namespace AdoNetExample.Tests
         {
             try
             {
-                Program.CreateTable(_connection);  // Create table first
-
-                Program.InsertRecords(_connection);
-
-                // Assert that records were inserted
-                using (var cmd = new SqlCommand("SELECT COUNT(*) FROM Department_tbl", _connection))
+                string connectionString = ConfigurationManager.ConnectionStrings["MyConnectionString"].ConnectionString;
+                using (SqlConnection connection = new SqlConnection(connectionString))
                 {
-                    int count = (int)cmd.ExecuteScalar();
-                    Assert.AreEqual(3, count);  // Expected count based on InsertRecords method
+                    connection.Open();
+                    Program.DropTable(connection);
+                    Program.CreateTable(connection);  // Create table first
+
+                    Program.InsertRecords(connection);
+
+                    // Assert that records were inserted
+                    using (var cmd = new SqlCommand("SELECT COUNT(*) FROM Department_tbl", connection))
+                    {
+                        int count = (int)cmd.ExecuteScalar();
+                        Assert.AreEqual(3, count);  // Expected count based on InsertRecords method
+                    }
                 }
             }
             catch (Exception ex)
@@ -76,19 +89,25 @@ namespace AdoNetExample.Tests
         {
             try
             {
-                Program.CreateTable(_connection);  // Create table first
-                Program.InsertRecords(_connection); // Insert records
-
-                // Capture console output for verification
-                using (ConsoleOutputCapture capture = new ConsoleOutputCapture())
+                string connectionString = ConfigurationManager.ConnectionStrings["MyConnectionString"].ConnectionString;
+                using (SqlConnection connection = new SqlConnection(connectionString))
                 {
-                    Program.PerformSelectQueries(_connection);
-                    string output = capture.GetOutput();
+                    connection.Open();
+                    Program.DropTable(connection);
+                    Program.CreateTable(connection);  // Create table first
+                    Program.InsertRecords(connection); // Insert records
 
-                    // Assert that specific records are found in output
-                    Assert.IsTrue(output.Contains("John Doe,  HR"));
-                    Assert.IsTrue(output.Contains("Jane Smith,  IT"));
-                    Assert.IsTrue(output.Contains("Mike Johnson,  Finance"));
+                    // Capture console output for verification
+                    using (ConsoleOutputCapture capture = new ConsoleOutputCapture())
+                    {
+                        Program.PerformSelectQueries(connection);
+                        string output = capture.GetOutput();
+
+                        // Assert that specific records are found in output
+                        Assert.IsTrue(output.Contains("John Doe,  HR"));
+                        Assert.IsTrue(output.Contains("Jane Smith,  IT"));
+                        Assert.IsTrue(output.Contains("Mike Johnson,  Finance"));
+                    }
                 }
             }
             catch (Exception ex)
